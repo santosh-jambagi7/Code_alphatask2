@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Collaborative Project Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <div id="app" class="app-root">
+
+    <!-- Top App Navigation -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="app-logo">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">TaskFlow</span>
+        </div>
+
+        <div class="project-selector-wrapper">
+          <button id="projectSelectBtn" class="project-selector-btn" title="Switch Project">
+            <span id="headerProjectIcon" class="proj-icon">🚀</span>
+            <span id="headerProjectName" class="proj-name">Loading project...</span>
+            <span class="dropdown-chevron">▾</span>
+          </button>
+          <div id="projectDropdown" class="dropdown-menu hidden">
+            <div class="dropdown-header">Your Projects</div>
+            <div id="projectsList" class="projects-menu-list"></div>
+            <div class="dropdown-divider"></div>
+            <button id="btnOpenNewProject" class="dropdown-item btn-create-proj">
+              <span>➕</span> Create New Project
+            </button>
+          </div>
+        </div>
+
+        <!-- View Switcher -->
+        <nav class="view-tabs">
+          <button id="tabBoard" class="view-tab active" data-view="board">
+            <span class="tab-icon">📋</span> Board
+          </button>
+          <button id="tabList" class="view-tab" data-view="list">
+            <span class="tab-icon">📄</span> List
+          </button>
+          <button id="tabDashboard" class="view-tab" data-view="dashboard">
+            <span class="tab-icon">📊</span> Dashboard
+          </button>
+        </nav>
+      </div>
+
+      <div class="header-center">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Search tasks, tags, or assignees..." autocomplete="off">
+          <button id="clearSearchBtn" class="clear-search-btn hidden">✕</button>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Live Connection Status -->
+        <div id="wsStatusPill" class="ws-status-pill connected" title="Real-time WebSocket Synchronized">
+          <span class="pulse-dot"></span>
+          <span id="wsStatusText" class="status-label">Live Sync</span>
+        </div>
+
+        <!-- Online Collaborators Presence -->
+        <div id="onlinePresence" class="presence-avatars" title="Users active on this board right now"></div>
+
+        <!-- Notifications Bell -->
+        <div class="notification-bell-wrapper">
+          <button id="notificationBtn" class="icon-btn" title="Notifications">
+            <span class="bell-icon">🔔</span>
+            <span id="unreadBadge" class="unread-badge hidden">0</span>
+          </button>
+          <div id="notificationDropdown" class="notification-dropdown dropdown-menu hidden">
+            <div class="notif-header">
+              <span class="notif-title">Notifications</span>
+              <div class="notif-actions">
+                <button id="markAllReadBtn" class="text-btn">Mark all read</button>
+                <button id="clearNotifsBtn" class="text-btn text-danger">Clear</button>
+              </div>
+            </div>
+            <div id="notificationList" class="notif-list">
+              <div class="empty-state">No notifications</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Menu -->
+        <div class="user-menu-wrapper">
+          <button id="userMenuBtn" class="user-avatar-btn">
+            <div id="headerUserAvatar" class="avatar-circle">A</div>
+            <span id="headerUserName" class="user-display-name">Alice</span>
+            <span class="dropdown-chevron">▾</span>
+          </button>
+          <div id="userDropdown" class="dropdown-menu hidden">
+            <div class="user-dropdown-info">
+              <div id="menuFullName" class="menu-user-name">Alice Johnson</div>
+              <div id="menuUserEmail" class="menu-user-email">alice@example.com</div>
+              <div id="menuUserRole" class="menu-user-role">Product Lead</div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button id="btnLogout" class="dropdown-item text-danger">
+              <span>🚪</span> Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Quick Persona Bar for Instant Multi-user Collaboration Demo -->
+    <section class="persona-bar">
+      <div class="persona-label">
+        <span class="zap-badge">DEMO COLLABORATE</span> Switch active user:
+      </div>
+      <div class="persona-buttons">
+        <button class="persona-chip active" data-username="alice">
+          <span class="chip-avatar" style="background:#6366f1">A</span>
+          <span class="chip-name">Alice</span>
+          <span class="chip-role">PM Lead</span>
+        </button>
+        <button class="persona-chip" data-username="bob">
+          <span class="chip-avatar" style="background:#10b981">B</span>
+          <span class="chip-name">Bob</span>
+          <span class="chip-role">Frontend</span>
+        </button>
+        <button class="persona-chip" data-username="charlie">
+          <span class="chip-avatar" style="background:#f59e0b">C</span>
+          <span class="chip-name">Charlie</span>
+          <span class="chip-role">Design</span>
+        </button>
+        <button class="persona-chip" data-username="diana">
+          <span class="chip-avatar" style="background:#ec4899">D</span>
+          <span class="chip-name">Diana</span>
+          <span class="chip-role">Backend</span>
+        </button>
+      </div>
+      <div class="persona-tip">
+        💡 Tip: Open two browser tabs side-by-side (e.g. Alice & Bob) to watch real-time task moves and comments!
+      </div>
+    </section>
+
+    <!-- Project Sub-Header / Action Bar -->
+    <section class="project-header">
+      <div class="project-header-left">
+        <div class="project-title-group">
+          <h1 id="projTitle" class="project-title">Loading project...</h1>
+          <p id="projDesc" class="project-description">Collaborative project workspace</p>
+        </div>
+      </div>
+
+      <div class="project-header-right">
+        <!-- Members List & Invite Button -->
+        <div class="project-members-bar">
+          <div id="projectMembersList" class="member-avatar-stack"></div>
+          <button id="btnInviteMember" class="btn btn-secondary btn-sm">
+            <span>+</span> Invite Member
+          </button>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="filters-bar">
+          <select id="filterPriority" class="select-input select-sm">
+            <option value="">All Priorities</option>
+            <option value="urgent">🔴 Urgent</option>
+            <option value="high">🟠 High</option>
+            <option value="medium">🔵 Medium</option>
+            <option value="low">⚪ Low</option>
+          </select>
+
+          <select id="filterAssignee" class="select-input select-sm">
+            <option value="">All Assignees</option>
+          </select>
+
+          <button id="btnNewTaskHeader" class="btn btn-primary btn-sm">
+            <span>+</span> New Task
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Views -->
+    <main class="main-content">
+      
+      <!-- 1. KANBAN BOARD VIEW -->
+      <section id="viewBoard" class="view-container active">
+        <div id="kanbanBoard" class="kanban-board">
+          <!-- Columns dynamically rendered here -->
+        </div>
+      </section>
+
+      <!-- 2. LIST VIEW (Asana-style) -->
+      <section id="viewList" class="view-container">
+        <div class="list-view-card">
+          <div class="list-view-header">
+            <div class="col-name">Task Name</div>
+            <div class="col-status">Status</div>
+            <div class="col-priority">Priority</div>
+            <div class="col-assignees">Assignees</div>
+            <div class="col-due">Due Date</div>
+            <div class="col-subtasks">Subtasks</div>
+            <div class="col-comments">Comments</div>
+            <div class="col-actions">Actions</div>
+          </div>
+          <div id="listViewRows" class="list-view-body">
+            <!-- Rows rendered here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. DASHBOARD / ANALYTICS VIEW -->
+      <section id="viewDashboard" class="view-container">
+        <div class="dashboard-grid">
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;">📦</div>
+            <div class="metric-info">
+              <div class="metric-value" id="dashTotalTasks">0</div>
+              <div class="metric-label">Total Tasks</div>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">✅</div>
+            <div class="metric-info">
+              <div class="metric-value" id="dashCompletedTasks">0</div>
+              <div class="metric-label">Completed Tasks</div>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">⚡</div>
+            <div class="metric-info">
+              <div class="metric-value" id="dashInProgressTasks">0</div>
+              <div class="metric-label">In Progress</div>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">⏰</div>
+            <div class="metric-info">
+              <div class="metric-value" id="dashOverdueTasks">0</div>
+              <div class="metric-label">Overdue Tasks</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Overview -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Project Completion Progress</h3>
+            <span id="dashProgressPct" class="progress-percent-badge">0%</span>
+          </div>
+          <div class="progress-track">
+            <div id="dashProgressBar" class="progress-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Two Column Dashboard Widgets -->
+        <div class="dashboard-row">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3>Task Distribution by Column</h3>
+            </div>
+            <div id="dashColumnBreakdown" class="column-breakdown-list"></div>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3>Team Member Workload</h3>
+            </div>
+            <div id="dashMemberWorkload" class="member-workload-list"></div>
+          </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Recent Project Activity</h3>
+          </div>
+          <div id="dashActivityTimeline" class="activity-timeline"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- MODAL: Task Details Modal -->
+    <div id="taskModal" class="modal-backdrop hidden">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+          <div class="task-modal-status-badge">
+            <select id="modalTaskColumnSelect" class="select-input select-sm"></select>
+          </div>
+          <div class="modal-header-actions">
+            <button id="modalDeleteTaskBtn" class="icon-btn text-danger" title="Delete Task">🗑️</button>
+            <button id="modalCloseBtn" class="icon-btn close-btn">✕</button>
+          </div>
+        </div>
+
+        <div class="modal-body modal-split">
+          <!-- Left: Details, Description, Subtasks, Comments -->
+          <div class="modal-main-col">
+            <div class="form-group">
+              <input type="text" id="modalTaskTitle" class="task-title-input" placeholder="Task Title">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea id="modalTaskDesc" class="textarea-input" rows="4" placeholder="Add a more detailed description..."></textarea>
+            </div>
+
+            <!-- Subtasks / Checklist -->
+            <div class="subtasks-section">
+              <div class="section-header-inline">
+                <label class="form-label">Checklist / Subtasks</label>
+                <span id="subtaskProgressLabel" class="subtask-counter">0/0</span>
+              </div>
+              <div class="subtask-progress-bar">
+                <div id="subtaskProgressFill" class="subtask-progress-fill" style="width: 0%;"></div>
+              </div>
+              <div id="subtasksList" class="subtasks-container"></div>
+              <div class="add-subtask-box">
+                <input type="text" id="newSubtaskInput" class="text-input text-sm" placeholder="Add a subtask (Press Enter)...">
+                <button id="btnAddSubtask" class="btn btn-secondary btn-sm">Add</button>
+              </div>
+            </div>
+
+            <!-- Comments & Discussion -->
+            <div class="comments-section">
+              <div class="section-header-inline">
+                <label class="form-label">Comments & Discussion</label>
+                <span id="typingIndicator" class="typing-indicator hidden">Someone is typing...</span>
+              </div>
+              <div id="commentsList" class="comments-container"></div>
+              <div class="comment-composer">
+                <div id="commentUserAvatar" class="avatar-circle sm">A</div>
+                <div class="composer-right">
+                  <textarea id="newCommentInput" class="textarea-input" rows="2" placeholder="Write a comment or update..."></textarea>
+                  <div class="composer-actions">
+                    <button id="btnPostComment" class="btn btn-primary btn-sm">Comment</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Metadata (Assignees, Priority, Due Date, Labels) -->
+          <div class="modal-sidebar-col">
+            <div class="sidebar-block">
+              <label class="sidebar-label">Priority</label>
+              <select id="modalTaskPriority" class="select-input">
+                <option value="low">⚪ Low</option>
+                <option value="medium" selected>🔵 Medium</option>
+                <option value="high">🟠 High</option>
+                <option value="urgent">🔴 Urgent</option>
+              </select>
+            </div>
+
+            <div class="sidebar-block">
+              <label class="sidebar-label">Due Date</label>
+              <input type="date" id="modalTaskDueDate" class="text-input">
+            </div>
+
+            <div class="sidebar-block">
+              <label class="sidebar-label">Assignees</label>
+              <div id="modalAssigneesList" class="assignees-checklist"></div>
+            </div>
+
+            <div class="sidebar-block">
+              <label class="sidebar-label">Labels / Tags</label>
+              <div id="modalLabelsList" class="labels-container"></div>
+              <div class="add-label-row">
+                <input type="text" id="newTagInput" class="text-input text-xs" placeholder="Add tag (e.g. Bug, UI)">
+                <input type="color" id="newTagColor" value="#6366f1" class="color-picker-xs" title="Tag color">
+                <button id="btnAddTag" class="btn btn-secondary btn-xs">+</button>
+              </div>
+            </div>
+
+            <div class="sidebar-block">
+              <button id="btnSaveTaskChanges" class="btn btn-primary btn-block">Save Changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Create New Project -->
+    <div id="newProjectModal" class="modal-backdrop hidden">
+      <div class="modal-dialog modal-md">
+        <div class="modal-header">
+          <h2 class="modal-title">Create Group Project</h2>
+          <button id="closeNewProjModalBtn" class="icon-btn close-btn">✕</button>
+        </div>
+        <form id="newProjectForm" class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="newProjName">Project Name *</label>
+            <input type="text" id="newProjName" class="text-input" placeholder="e.g. Marketing Q3 Launch" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newProjDesc">Description</label>
+            <textarea id="newProjDesc" class="textarea-input" rows="3" placeholder="Goals, scope, and key deliverables..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-half">
+              <label class="form-label">Project Icon</label>
+              <select id="newProjIcon" class="select-input">
+                <option value="🚀">🚀 Rocket</option>
+                <option value="⚡">⚡ Lightning</option>
+                <option value="📱">📱 Mobile App</option>
+                <option value="💻">💻 Web Platform</option>
+                <option value="🎨">🎨 Design System</option>
+                <option value="📈">📈 Marketing</option>
+                <option value="🔥">🔥 Hot Sprint</option>
+              </select>
+            </div>
+            <div class="form-group col-half">
+              <label class="form-label">Theme Color</label>
+              <input type="color" id="newProjColor" value="#6366f1" class="color-picker-input">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="cancelNewProjBtn" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Project</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: Invite Member -->
+    <div id="inviteMemberModal" class="modal-backdrop hidden">
+      <div class="modal-dialog modal-md">
+        <div class="modal-header">
+          <h2 class="modal-title">Invite Member to Project</h2>
+          <button id="closeInviteModalBtn" class="icon-btn close-btn">✕</button>
+        </div>
+        <form id="inviteMemberForm" class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Select User or enter Username/Email</label>
+            <select id="inviteUserSelect" class="select-input"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <select id="inviteUserRole" class="select-input">
+              <option value="member" selected>Member (Can create, edit, move tasks)</option>
+              <option value="admin">Admin (Can manage members and columns)</option>
+              <option value="viewer">Viewer (Read-only)</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="cancelInviteBtn" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Member</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: Add New Column -->
+    <div id="newColumnModal" class="modal-backdrop hidden">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-header">
+          <h2 class="modal-title">Add Board Column</h2>
+          <button id="closeNewColModalBtn" class="icon-btn close-btn">✕</button>
+        </div>
+        <form id="newColumnForm" class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="newColTitle">Column Title *</label>
+            <input type="text" id="newColTitle" class="text-input" placeholder="e.g. QA Testing, Staging..." required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newColColor">Color Tag</label>
+            <input type="color" id="newColColor" value="#3b82f6" class="color-picker-input">
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="cancelNewColBtn" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Column</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast Container for Real-time Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/ws.js"></script>
+  <script src="/static/js/state.js"></script>
+  <script src="/static/js/ui.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
